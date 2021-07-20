@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+      "lib": ["es2016", "dom", "es5"],
+      "noImplicitAny": true,
+  }
+}
