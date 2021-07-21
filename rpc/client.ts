@@ -32,8 +32,7 @@ export class Client implements rpc.Caller {
 
       resp.error = header.Error;
       if (resp.error !== undefined && resp.error !== null) {
-        console.error(header);
-        return resp;
+        throw resp.error;
       }
 
       resp.reply = await dec.decode();
@@ -59,14 +58,7 @@ export function CallProxy(caller: rpc.Caller): any {
       const prop = p as string;
       if (prop.startsWith("$")) {
         return async (...args: any[]) => {
-          let params: any = args;
-          if (args.length === 1) {
-            params = args[0];
-          }
-          if (args.length === 0) {
-            params = undefined;
-          }
-          const resp = await caller.call(prop.slice(1), params);
+          const resp = await caller.call(prop.slice(1), args);
           if (resp.error) {
             throw resp.error;
           }
