@@ -10,10 +10,9 @@ function copy(src, dst, off = 0) {
 const MIN_READ = 32 * 1024;
 const MAX_SIZE = 2 ** 32 - 2;
 class Buffer1 {
-    _buf;
-    _off = 0;
     constructor(ab){
         this._buf = ab === undefined ? new Uint8Array(0) : new Uint8Array(ab);
+        this._off = 0;
     }
     bytes(options = {
         copy: true
@@ -142,7 +141,6 @@ class Buffer1 {
 }
 export { Buffer1 as Buffer };
 class JSONCodec1 {
-    debug;
     constructor(debug1 = false){
         this.debug = debug1;
     }
@@ -154,9 +152,6 @@ class JSONCodec1 {
     }
 }
 class JSONEncoder1 {
-    w;
-    enc;
-    debug;
     constructor(w1, debug2 = false){
         this.w = w1;
         this.enc = new TextEncoder();
@@ -174,9 +169,6 @@ class JSONEncoder1 {
     }
 }
 class JSONDecoder1 {
-    r;
-    dec;
-    debug;
     constructor(r1, debug3 = false){
         this.r = r1;
         this.dec = new TextDecoder();
@@ -199,7 +191,6 @@ export { JSONCodec1 as JSONCodec };
 export { JSONEncoder1 as JSONEncoder };
 export { JSONDecoder1 as JSONDecoder };
 class FrameCodec1 {
-    codec;
     constructor(codec1){
         this.codec = codec1;
     }
@@ -211,8 +202,6 @@ class FrameCodec1 {
     }
 }
 class FrameEncoder1 {
-    w;
-    codec;
     constructor(w2, codec2){
         this.w = w2;
         this.codec = codec2;
@@ -233,8 +222,6 @@ class FrameEncoder1 {
     }
 }
 class FrameDecoder1 {
-    r;
-    dec;
     constructor(r2, dec1){
         this.r = r2;
         this.dec = dec1;
@@ -274,7 +261,6 @@ function cleanSelector(s) {
     return s;
 }
 class RespondMux1 {
-    handlers;
     constructor(){
         this.handlers = {
         };
@@ -321,9 +307,6 @@ export { HandlerFunc1 as HandlerFunc };
 export { NotFoundHandler1 as NotFoundHandler };
 export { RespondMux1 as RespondMux };
 class Call1 {
-    selector;
-    caller;
-    decoder;
     constructor(selector1, decoder){
         this.selector = selector1;
         this.decoder = decoder;
@@ -333,19 +316,12 @@ class Call1 {
     }
 }
 class ResponseHeader1 {
-    Error;
-    Continue;
     constructor(){
         this.Error = undefined;
         this.Continue = false;
     }
 }
 class Response1 {
-    error;
-    continue;
-    reply;
-    channel;
-    codec;
     constructor(channel, codec3){
         this.channel = channel;
         this.codec = codec3;
@@ -361,8 +337,6 @@ class Response1 {
 }
 export { Response1 as Response };
 class Client1 {
-    session;
-    codec;
     constructor(session1, codec4){
         this.session = session1;
         this.codec = codec4;
@@ -381,8 +355,7 @@ class Client1 {
             const resp = new Response1(ch, framer);
             resp.error = header.Error;
             if (resp.error !== undefined && resp.error !== null) {
-                console.error(header);
-                return resp;
+                throw resp.error;
             }
             resp.reply = await dec1.decode();
             resp.continue = header.Continue;
@@ -417,14 +390,7 @@ function CallProxy1(caller) {
             const prop = p;
             if (prop.startsWith("$")) {
                 return async (...args)=>{
-                    let params = args;
-                    if (args.length === 1) {
-                        params = args[0];
-                    }
-                    if (args.length === 0) {
-                        params = undefined;
-                    }
-                    const resp = await caller.call(prop.slice(1), params);
+                    const resp = await caller.call(prop.slice(1), args);
                     if (resp.error) {
                         throw resp.error;
                     }
@@ -436,9 +402,6 @@ function CallProxy1(caller) {
     });
 }
 class responder1 {
-    header;
-    ch;
-    codec;
     constructor(ch1, codec5, header){
         this.ch = ch1;
         this.codec = codec5;
@@ -474,10 +437,6 @@ export { Client1 as Client };
 export { CallProxy1 as CallProxy };
 export { Respond1 as Respond };
 class Peer1 {
-    session;
-    caller;
-    codec;
-    responder;
     constructor(session2, codec6){
         this.session = session2;
         this.codec = codec6;
@@ -514,9 +473,6 @@ function concat(list, totalLength) {
     return buf;
 }
 class queue {
-    q;
-    waiters;
-    closed;
     constructor(){
         this.q = [];
         this.waiters = [];
@@ -550,9 +506,6 @@ class queue {
     }
 }
 class ReadBuffer {
-    gotEOF;
-    readBuf;
-    readers;
     constructor(){
         this.readBuf = new Uint8Array(0);
         this.gotEOF = false;
@@ -651,7 +604,6 @@ var debug4 = {
     bytes: false
 };
 class Encoder {
-    w;
     constructor(w3){
         this.w = w3;
     }
@@ -671,7 +623,6 @@ class Encoder {
     }
 }
 class Decoder {
-    r;
     constructor(r3){
         this.r = r3;
     }
@@ -844,18 +795,6 @@ const channelMaxPacket1 = 1 << 15;
 const maxPacketLength1 = Number.MAX_VALUE;
 const channelWindowSize1 = 64 * channelMaxPacket1;
 class Channel1 {
-    localId;
-    remoteId;
-    maxIncomingPayload;
-    maxRemotePayload;
-    session;
-    ready;
-    sentEOF;
-    sentClose;
-    remoteWin;
-    myWindow;
-    readBuf;
-    writers;
     constructor(sess){
         this.localId = 0;
         this.remoteId = 0;
@@ -1030,12 +969,6 @@ class Channel1 {
 }
 export { Channel1 as Channel };
 class Session1 {
-    conn;
-    channels;
-    incoming;
-    enc;
-    dec;
-    done;
     constructor(conn){
         this.conn = conn;
         this.enc = new Encoder(conn);
@@ -1158,10 +1091,6 @@ function connect2(addr, onclose) {
     });
 }
 class Conn {
-    ws;
-    waiters;
-    chunks;
-    isClosed;
     constructor(ws){
         this.isClosed = false;
         this.waiters = [];
@@ -1242,3 +1171,4 @@ async function connect1(addr, codec7) {
 }
 export { options1 as options,  };
 export { connect1 as connect };
+
