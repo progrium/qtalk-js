@@ -45,10 +45,11 @@ const MAX_SIZE = 2 ** 32 - 2;
 
 export class Buffer {
   _buf: Uint8Array; // contents are the bytes buf[off : len(buf)]
-  _off = 0; // read at buf[off], write at buf[buf.byteLength]
+  _off: number; // read at buf[off], write at buf[buf.byteLength]
 
   constructor(ab?: ArrayBufferLike | ArrayLike<number>) {
     this._buf = ab === undefined ? new Uint8Array(0) : new Uint8Array(ab);
+    this._off = 0;
   }
 
   /** Returns a slice holding the unread portion of the buffer.
