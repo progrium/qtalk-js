@@ -265,9 +265,9 @@ class RespondMux1 {
         this.handlers = {
         };
     }
-    respondRPC(r, c) {
+    async respondRPC(r, c) {
         const h = this.handler(c);
-        h.respondRPC(r, c);
+        await h.respondRPC(r, c);
     }
     handler(c) {
         const h = this.match(c.selector);
@@ -382,6 +382,9 @@ async function Respond1(ch, codec5, handler) {
         handler = new RespondMux1();
     }
     await handler.respondRPC(resp, call);
+    if (!resp.responded) {
+        await resp.return(null);
+    }
     return Promise.resolve();
 }
 function CallProxy1(caller) {
@@ -406,6 +409,7 @@ class responder1 {
         this.ch = ch1;
         this.codec = codec5;
         this.header = header;
+        this.responded = false;
     }
     send(v) {
         return this.codec.encoder(this.ch).encode(v);
@@ -418,6 +422,7 @@ class responder1 {
         return this.ch;
     }
     async respond(v, continue_) {
+        this.responded = true;
         this.header.Continue = continue_;
         if (v instanceof Error) {
             this.header.Error = v.message;
@@ -1166,9 +1171,76 @@ var options1 = {
 };
 async function connect1(addr, codec7) {
     const conn1 = await options1.transport.connect(addr);
+    return open1(conn1, codec7);
+}
+function open1(conn1, codec7) {
     const sess1 = new Session1(conn1);
     return new Peer1(sess1, codec7);
 }
 export { options1 as options,  };
 export { connect1 as connect };
+export { open1 as open };
+class Conn1 {
+    constructor(frame){
+        this.isClosed = false;
+        this.waiters = [];
+        this.chunks = [];
+        if (frame && frame.contentWindow) {
+            this.frame = frame.contentWindow;
+        } else {
+            this.frame = window.parent;
+        }
+        window.addEventListener("message", (event)=>{
+            const chunk = new Uint8Array(event.data);
+            this.chunks.push(chunk);
+            if (this.waiters.length > 0) {
+                const waiter = this.waiters.shift();
+                if (waiter) waiter();
+            }
+        });
+    }
+    read(p) {
+        return new Promise((resolve)=>{
+            var tryRead = ()=>{
+                if (this.isClosed) {
+                    resolve(null);
+                    return;
+                }
+                if (this.chunks.length === 0) {
+                    this.waiters.push(tryRead);
+                    return;
+                }
+                let written = 0;
+                while(written < p.length){
+                    const chunk = this.chunks.shift();
+                    if (chunk === null || chunk === undefined) {
+                        resolve(null);
+                        return;
+                    }
+                    const buf = chunk.slice(0, p.length - written);
+                    p.set(buf, written);
+                    written += buf.length;
+                    if (chunk.length > buf.length) {
+                        const restchunk = chunk.slice(buf.length);
+                        this.chunks.unshift(restchunk);
+                    }
+                }
+                resolve(written);
+                return;
+            };
+            tryRead();
+        });
+    }
+    write(p) {
+        this.frame.postMessage(p.buffer, "*");
+        return Promise.resolve(p.byteLength);
+    }
+    close() {
+        if (this.isClosed) return;
+        this.isClosed = true;
+        this.waiters.forEach((waiter)=>waiter()
+        );
+    }
+}
+export { Conn1 as IFrameConn };
 

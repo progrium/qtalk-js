@@ -8,4 +8,5 @@ export * from "./peer/mod.ts";
 export * from "./mux/mod.ts";
 // @ts-ignore
 export * from "./buffer.ts";
-
+// @ts-ignore
+export {Conn as IFrameConn} from "./transport/iframe.ts";
