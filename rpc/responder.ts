@@ -22,6 +22,10 @@ export async function Respond(ch: mux.Channel, codec: codec_.Codec, handler?: rp
   }
   
   await handler.respondRPC(resp, call);
+
+  if (!resp.responded) {
+    await resp.return(null);
+  }
   
   return Promise.resolve();
 }
@@ -31,11 +35,13 @@ class responder implements rpc.Responder {
   header: rpc.ResponseHeader;
   ch: mux.Channel;
   codec: codec_.FrameCodec;
+  responded: boolean;
   
   constructor(ch: mux.Channel, codec: codec_.FrameCodec, header: rpc.ResponseHeader) {
     this.ch = ch;
     this.codec = codec;
     this.header = header;
+    this.responded = false;
   }
   
   send(v: any): Promise<void> {
@@ -52,6 +58,7 @@ class responder implements rpc.Responder {
   }
 
   async respond(v: any, continue_: boolean): Promise<void> {
+    this.responded = true;
     this.header.Continue = continue_;
 
     // if v is error, set v to null

@@ -34,9 +34,9 @@ export class RespondMux {
     this.handlers = {};
   }
 
-  respondRPC(r: rpc.Responder, c: rpc.Call) {
+  async respondRPC(r: rpc.Responder, c: rpc.Call) {
     const h = this.handler(c);
-    h.respondRPC(r, c);
+    await h.respondRPC(r, c);
   }
 
   handler(c: rpc.Call): Handler {
