@@ -246,8 +246,8 @@ function HandlerFunc1(fn) {
     };
 }
 function NotFoundHandler1() {
-    return HandlerFunc1((r3, c)=>{
-        r3.return(new Error(`not found: ${c.selector}`));
+    return HandlerFunc1((r, c)=>{
+        r.return(new Error(`not found: ${c.selector}`));
     });
 }
 function cleanSelector(s) {
@@ -307,9 +307,9 @@ export { HandlerFunc1 as HandlerFunc };
 export { NotFoundHandler1 as NotFoundHandler };
 export { RespondMux1 as RespondMux };
 class Call1 {
-    constructor(selector1, decoder){
+    constructor(selector1, decoder1){
         this.selector = selector1;
-        this.decoder = decoder;
+        this.decoder = decoder1;
     }
     receive() {
         return this.decoder.decode();
@@ -321,9 +321,9 @@ class ResponseHeader1 {
         this.Continue = false;
     }
 }
-class Response1 {
-    constructor(channel, codec3){
-        this.channel = channel;
+class Response {
+    constructor(channel1, codec3){
+        this.channel = channel1;
         this.codec = codec3;
         this.error = undefined;
         this.continue = false;
@@ -335,7 +335,7 @@ class Response1 {
         return this.codec.decoder(this.channel).decode();
     }
 }
-export { Response1 as Response };
+export { Response as Response };
 class Client1 {
     constructor(session1, codec4){
         this.session = session1;
@@ -346,18 +346,18 @@ class Client1 {
         try {
             const framer = new FrameCodec1(this.codec);
             const enc = framer.encoder(ch);
-            const dec1 = framer.decoder(ch);
+            const dec = framer.decoder(ch);
             await enc.encode({
                 Selector: selector
             });
             await enc.encode(args);
-            const header = await dec1.decode();
-            const resp = new Response1(ch, framer);
+            const header = await dec.decode();
+            const resp = new Response(ch, framer);
             resp.error = header.Error;
             if (resp.error !== undefined && resp.error !== null) {
                 throw resp.error;
             }
-            resp.reply = await dec1.decode();
+            resp.reply = await dec.decode();
             resp.continue = header.Continue;
             if (!resp.continue) {
                 await ch.close();
@@ -370,12 +370,12 @@ class Client1 {
         }
     }
 }
-async function Respond1(ch, codec5, handler) {
-    const framer = new FrameCodec1(codec5);
-    const dec1 = framer.decoder(ch);
-    const frame = await dec1.decode();
-    const call = new Call1(frame.Selector, dec1);
-    call.caller = new Client1(ch.session, codec5);
+async function Respond1(ch, codec, handler) {
+    const framer = new FrameCodec1(codec);
+    const dec = framer.decoder(ch);
+    const frame = await dec.decode();
+    const call = new Call1(frame.Selector, dec);
+    call.caller = new Client1(ch.session, codec);
     const header = new ResponseHeader1();
     const resp = new responder1(ch, framer, header);
     if (!handler) {
@@ -389,7 +389,7 @@ async function Respond1(ch, codec5, handler) {
 }
 function CallProxy1(caller) {
     return new Proxy(caller, {
-        get: (t, p, r3)=>{
+        get: (t, p, r)=>{
             const prop = p;
             if (prop.startsWith("$")) {
                 return async (...args)=>{
@@ -400,15 +400,15 @@ function CallProxy1(caller) {
                     return resp.reply;
                 };
             }
-            return Reflect.get(t, p, r3);
+            return Reflect.get(t, p, r);
         }
     });
 }
 class responder1 {
-    constructor(ch1, codec5, header){
+    constructor(ch1, codec5, header1){
         this.ch = ch1;
         this.codec = codec5;
-        this.header = header;
+        this.header = header1;
         this.responded = false;
     }
     send(v) {
@@ -450,11 +450,11 @@ class Peer1 {
     }
     async respond() {
         while(true){
-            const ch1 = await this.session.accept();
-            if (ch1 === null) {
+            const ch = await this.session.accept();
+            if (ch === null) {
                 break;
             }
-            Respond1(ch1, this.codec, this.responder);
+            Respond1(ch, this.codec, this.responder);
         }
     }
     async call(selector, params) {
@@ -708,9 +708,9 @@ function Marshal(obj) {
     }
     throw `marshal of unknown type: ${obj}`;
 }
-async function readPacket(r4) {
+async function readPacket(r) {
     const head = new Uint8Array(1);
-    const headn = await r4.read(head);
+    const headn = await r.read(head);
     if (headn === null) {
         return Promise.resolve(null);
     }
@@ -720,7 +720,7 @@ async function readPacket(r4) {
         return Promise.reject(`bad packet: ${msgID}`);
     }
     const rest = new Uint8Array(size);
-    const restn = await r4.read(rest);
+    const restn = await r.read(rest);
     if (restn === null) {
         return Promise.reject("unexpected EOF");
     }
@@ -728,7 +728,7 @@ async function readPacket(r4) {
         const view = new DataView(rest.buffer);
         const length = view.getUint32(4);
         const data = new Uint8Array(length);
-        const datan = await r4.read(data);
+        const datan = await r.read(data);
         if (datan === null) {
             return Promise.reject("unexpected EOF");
         }
@@ -974,25 +974,25 @@ class Channel1 {
 }
 export { Channel1 as Channel };
 class Session1 {
-    constructor(conn){
-        this.conn = conn;
-        this.enc = new Encoder(conn);
-        this.dec = new Decoder(conn);
+    constructor(conn1){
+        this.conn = conn1;
+        this.enc = new Encoder(conn1);
+        this.dec = new Decoder(conn1);
         this.channels = [];
         this.incoming = new queue();
         this.done = this.loop();
     }
     async open() {
-        const ch1 = this.newChannel();
-        ch1.maxIncomingPayload = channelMaxPacket1;
+        const ch = this.newChannel();
+        ch.maxIncomingPayload = channelMaxPacket1;
         await this.enc.encode({
             ID: 100,
-            windowSize: ch1.myWindow,
-            maxPacketSize: ch1.maxIncomingPayload,
-            senderID: ch1.localId
+            windowSize: ch.myWindow,
+            maxPacketSize: ch.maxIncomingPayload,
+            senderID: ch.localId
         });
-        if (await ch1.ready.shift()) {
-            return ch1;
+        if (await ch.ready.shift()) {
+            return ch;
         }
         throw "failed to open";
     }
@@ -1022,11 +1022,11 @@ class Session1 {
                     continue;
                 }
                 const cmsg = msg;
-                const ch1 = this.getCh(cmsg.channelID);
-                if (ch1 === undefined) {
+                const ch = this.getCh(cmsg.channelID);
+                if (ch === undefined) {
                     throw `invalid channel (${cmsg.channelID}) on op ${cmsg.ID}`;
                 }
-                await ch1.handle(cmsg);
+                await ch.handle(cmsg);
             }
         } catch (e) {
             throw new Error(`session loop: ${e}`);
@@ -1055,18 +1055,18 @@ class Session1 {
         });
     }
     newChannel() {
-        const ch1 = new Channel1(this);
-        ch1.remoteWin = 0;
-        ch1.myWindow = channelWindowSize1;
-        ch1.localId = this.addCh(ch1);
-        return ch1;
+        const ch = new Channel1(this);
+        ch.remoteWin = 0;
+        ch.myWindow = channelWindowSize1;
+        ch.localId = this.addCh(ch);
+        return ch;
     }
     getCh(id) {
-        const ch1 = this.channels[id];
-        if (ch1 && ch1.localId !== id) {
-            console.log("bad ids:", id, ch1.localId, ch1.remoteId);
+        const ch = this.channels[id];
+        if (ch && ch.localId !== id) {
+            console.log("bad ids:", id, ch.localId, ch.remoteId);
         }
-        return ch1;
+        return ch;
     }
     addCh(ch) {
         this.channels.forEach((v, i)=>{
@@ -1096,11 +1096,11 @@ function connect2(addr, onclose) {
     });
 }
 class Conn {
-    constructor(ws){
+    constructor(ws1){
         this.isClosed = false;
         this.waiters = [];
         this.chunks = [];
-        this.ws = ws;
+        this.ws = ws1;
         this.ws.binaryType = "arraybuffer";
         this.ws.onmessage = (event)=>{
             const chunk = new Uint8Array(event.data);
@@ -1166,38 +1166,35 @@ const mod = function() {
         Conn: Conn
     };
 }();
-var options1 = {
-    transport: mod
+var frames = {
 };
-async function connect1(addr, codec7) {
-    const conn1 = await options1.transport.connect(addr);
-    return open1(conn1, codec7);
-}
-function open1(conn1, codec7) {
-    const sess1 = new Session1(conn1);
-    return new Peer1(sess1, codec7);
-}
-export { options1 as options,  };
-export { connect1 as connect };
-export { open1 as open };
+window.addEventListener("message", (event)=>{
+    if (!event.source) return;
+    const frameID = event.source.window.frameElement ? event.source.window.frameElement.id : "";
+    if (!frames[frameID]) {
+        console.warn("incoming message with no established connection for frame ID:", frameID);
+        return;
+    }
+    const conn = frames[frameID];
+    const chunk = new Uint8Array(event.data);
+    conn.chunks.push(chunk);
+    if (conn.waiters.length > 0) {
+        const waiter = conn.waiters.shift();
+        if (waiter) waiter();
+    }
+});
 class Conn1 {
-    constructor(frame){
+    constructor(frame1){
         this.isClosed = false;
         this.waiters = [];
         this.chunks = [];
-        if (frame && frame.contentWindow) {
-            this.frame = frame.contentWindow;
+        if (frame1 && frame1.contentWindow) {
+            this.frame = frame1.contentWindow;
+            frames[frame1.id] = this;
         } else {
             this.frame = window.parent;
+            frames[""] = this;
         }
-        window.addEventListener("message", (event)=>{
-            const chunk = new Uint8Array(event.data);
-            this.chunks.push(chunk);
-            if (this.waiters.length > 0) {
-                const waiter = this.waiters.shift();
-                if (waiter) waiter();
-            }
-        });
     }
     read(p) {
         return new Promise((resolve)=>{
@@ -1242,5 +1239,25 @@ class Conn1 {
         );
     }
 }
+var options1 = {
+    transport: mod
+};
+async function connect1(addr, codec) {
+    const conn = await options1.transport.connect(addr);
+    return open1(conn, codec);
+}
+function open1(conn, codec) {
+    if (conn === window.parent) {
+        conn = new Conn1();
+    }
+    if (typeof conn === "string") {
+        conn = new Conn1(document.querySelector(`iframe#${conn}`));
+    }
+    const sess = new Session1(conn);
+    return new Peer1(sess, codec);
+}
+export { options1 as options,  };
+export { connect1 as connect };
+export { open1 as open };
 export { Conn1 as IFrameConn };
 

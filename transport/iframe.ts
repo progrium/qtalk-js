@@ -1,27 +1,40 @@
 
+var frames: {[index: string]: Conn} = {};
+
+window.addEventListener("message", (event) => {
+  if (!event.source) return;
+  // @ts-ignore
+  const frameID = (event.source.window.frameElement) ? event.source.window.frameElement.id : "";
+  if (!frames[frameID]) {
+      console.warn("incoming message with no established connection for frame ID:", frameID);
+      return;
+  }
+  const conn = frames[frameID];
+  const chunk = new Uint8Array(event.data);
+  conn.chunks.push(chunk);
+  if (conn.waiters.length > 0) {
+    const waiter = conn.waiters.shift();
+    if (waiter) waiter();
+  }
+});
+
 export class Conn {
   waiters: Array<() => void>
   chunks: Array<Uint8Array>;
   isClosed: boolean
   frame: Window;
 
-  constructor(frame?: HTMLIFrameElement) {
+  constructor(frame?: HTMLIFrameElement|null) {
     this.isClosed = false;
     this.waiters = [];
     this.chunks = [];
     if (frame && frame.contentWindow) {
       this.frame = frame.contentWindow;
+      frames[frame.id] = this;
     } else {
       this.frame = window.parent;
+      frames[""] = this;
     }
-    window.addEventListener("message", (event) => {
-      const chunk = new Uint8Array(event.data);
-      this.chunks.push(chunk);
-      if (this.waiters.length > 0) {
-        const waiter = this.waiters.shift();
-        if (waiter) waiter();
-      }
-    })
   }
 
   read(p: Uint8Array): Promise<number | null> {
