@@ -1168,12 +1168,23 @@ const mod = function() {
 }();
 var frames = {
 };
+function frameElementID(w) {
+    return w.frameElement ? w.frameElement.id : "";
+}
 window.addEventListener("message", (event)=>{
     if (!event.source) return;
-    const frameID = event.source.window.frameElement ? event.source.window.frameElement.id : "";
+    const frameID = frameElementID(event.source);
     if (!frames[frameID]) {
-        console.warn("incoming message with no established connection for frame ID:", frameID);
-        return;
+        const event = new CustomEvent("connection", {
+            detail: frameID
+        });
+        if (!window.dispatchEvent(event)) {
+            return;
+        }
+        if (!frames[frameID]) {
+            console.warn("incoming message with no connection for frame ID in window:", frameID, window.location);
+            return;
+        }
     }
     const conn = frames[frameID];
     const chunk = new Uint8Array(event.data);
@@ -1193,7 +1204,7 @@ class Conn1 {
             frames[frame1.id] = this;
         } else {
             this.frame = window.parent;
-            frames[""] = this;
+            frames[frameElementID(window.parent)] = this;
         }
     }
     read(p) {
@@ -1246,7 +1257,7 @@ async function connect1(addr, codec) {
     const conn = await options1.transport.connect(addr);
     return open1(conn, codec);
 }
-function open1(conn, codec) {
+function open1(conn, codec, handlers) {
     if (conn === window.parent) {
         conn = new Conn1();
     }
@@ -1254,7 +1265,14 @@ function open1(conn, codec) {
         conn = new Conn1(document.querySelector(`iframe#${conn}`));
     }
     const sess = new Session1(conn);
-    return new Peer1(sess, codec);
+    const p = new Peer1(sess, codec);
+    if (handlers) {
+        for(const name in handlers){
+            p.handle(name, HandlerFunc1(handlers[name]));
+        }
+        p.respond();
+    }
+    return p;
 }
 export { options1 as options,  };
 export { connect1 as connect };

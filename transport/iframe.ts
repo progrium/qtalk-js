@@ -1,13 +1,23 @@
 
 var frames: {[index: string]: Conn} = {};
 
+function frameElementID(w: Window) {
+  return (w.frameElement) ? w.frameElement.id : "";
+}
+
 window.addEventListener("message", (event) => {
   if (!event.source) return;
   // @ts-ignore
-  const frameID = (event.source.window.frameElement) ? event.source.window.frameElement.id : "";
+  const frameID = frameElementID(event.source);
   if (!frames[frameID]) {
-      console.warn("incoming message with no established connection for frame ID:", frameID);
-      return;
+      const event = new CustomEvent("connection", { detail: frameID });
+      if (!window.dispatchEvent(event)) {
+        return;
+      }
+      if (!frames[frameID]) {
+        console.warn("incoming message with no connection for frame ID in window:", frameID, window.location);
+        return;
+      }
   }
   const conn = frames[frameID];
   const chunk = new Uint8Array(event.data);
@@ -33,7 +43,7 @@ export class Conn {
       frames[frame.id] = this;
     } else {
       this.frame = window.parent;
-      frames[""] = this;
+      frames[frameElementID(window.parent)] = this;
     }
   }
 
