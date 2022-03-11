@@ -52,20 +52,18 @@ export class Client implements rpc.Caller {
   }
 }
 
-export function CallProxy(caller: rpc.Caller): any {
-  return new Proxy(caller, {
-    get: (t,p,r) => {
-      const prop = p as string;
-      if (prop.startsWith("$")) {
-        return async (...args: any[]) => {
-          const resp = await caller.call(prop.slice(1), args);
-          if (resp.error) {
-            throw resp.error;
-          }
-          return resp.reply;
-        }
+export function VirtualCaller(caller: rpc.Caller): any {
+  function pathBuilder(path: string, callable: (p: string, a: any[]) => any): CallableFunction {
+    return new Proxy(Object.assign(() => {}, {path, callable}), {
+      get({path, callable}, prop: string) {
+        return pathBuilder(path ? `${path}.${prop}`: prop, callable);
+      },
+      apply({path, callable}, thisArg, args = []) {
+        return callable(path, args);
       }
-      return Reflect.get(t, p, r);
-    }
+    })
+  }
+  return pathBuilder("", (selector, args) => {
+    return caller.call(selector, args).then((resp: rpc.Response) => resp.reply)
   })
 }

@@ -40,4 +40,8 @@ export class Peer implements rpc.Caller, rpc.Handler {
     this.responder.respondRPC(r, c);
   }
 
+  virtualize() {
+    return rpc.VirtualCaller(this.caller);
+  }
+
 }
