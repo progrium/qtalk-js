@@ -55,8 +55,9 @@ export class Client implements rpc.Caller {
 export function VirtualCaller(caller: rpc.Caller): any {
   function pathBuilder(path: string, callable: (p: string, a: any[]) => any): CallableFunction {
     return new Proxy(Object.assign(() => {}, {path, callable}), {
-      get({path, callable}, prop: string) {
-        return pathBuilder(path ? `${path}.${prop}`: prop, callable);
+      get(t: any, prop: string, rcvr: any) {
+        if (prop.startsWith("__")) return Reflect.get(t, prop, rcvr);
+        return pathBuilder(t.path ? `${t.path}.${prop}`: prop, t.callable);
       },
       apply({path, callable}, thisArg, args = []) {
         return callable(path, args);
