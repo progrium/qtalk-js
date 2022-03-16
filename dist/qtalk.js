@@ -387,21 +387,25 @@ async function Respond1(ch, codec, handler) {
     }
     return Promise.resolve();
 }
-function CallProxy1(caller) {
-    return new Proxy(caller, {
-        get: (t, p, r)=>{
-            const prop = p;
-            if (prop.startsWith("$")) {
-                return async (...args)=>{
-                    const resp = await caller.call(prop.slice(1), args);
-                    if (resp.error) {
-                        throw resp.error;
-                    }
-                    return resp.reply;
-                };
+function VirtualCaller1(caller) {
+    function pathBuilder(path1, callable1) {
+        return new Proxy(Object.assign(()=>{
+        }, {
+            path: path1,
+            callable: callable1
+        }), {
+            get (t, prop, rcvr) {
+                if (prop.startsWith("__")) return Reflect.get(t, prop, rcvr);
+                return pathBuilder(t.path ? `${t.path}.${prop}` : prop, t.callable);
+            },
+            apply ({ path , callable  }, thisArg, args = []) {
+                return callable(path, args);
             }
-            return Reflect.get(t, p, r);
-        }
+        });
+    }
+    return pathBuilder("", (selector, args)=>{
+        return caller.call(selector, args).then((resp)=>resp.reply
+        );
     });
 }
 class responder1 {
@@ -439,7 +443,7 @@ class responder1 {
 export { Call1 as Call };
 export { ResponseHeader1 as ResponseHeader };
 export { Client1 as Client };
-export { CallProxy1 as CallProxy };
+export { VirtualCaller1 as VirtualCaller };
 export { Respond1 as Respond };
 class Peer1 {
     constructor(session2, codec6){
@@ -465,6 +469,9 @@ class Peer1 {
     }
     respondRPC(r, c) {
         this.responder.respondRPC(r, c);
+    }
+    virtualize() {
+        return VirtualCaller1(this.caller);
     }
 }
 export { Peer1 as Peer };
