@@ -5,7 +5,7 @@ import * as codec from "../codec/mod.ts";
 // @ts-ignore
 import * as session from "./mod.ts";
 
-export const channelMaxPacket = 1 << 15;
+export const channelMaxPacket = 1 << 24; // ~16MB, arbitrary
 export const channelWindowSize = 64 * channelMaxPacket;
 
 // channel represents a virtual muxed connection

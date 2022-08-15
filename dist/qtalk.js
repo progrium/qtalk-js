@@ -1,3 +1,57 @@
+// deno-fmt-ignore-file
+// deno-lint-ignore-file
+// This code was bundled using `deno bundle` and it's not recommended to edit it manually
+
+class JSONCodec {
+    constructor(debug1 = false){
+        this.debug = debug1;
+    }
+    encoder(w) {
+        return new JSONEncoder(w, this.debug);
+    }
+    decoder(r) {
+        return new JSONDecoder(r, this.debug);
+    }
+}
+class JSONEncoder {
+    constructor(w, debug2 = false){
+        this.w = w;
+        this.enc = new TextEncoder();
+        this.debug = debug2;
+    }
+    async encode(v) {
+        if (this.debug) {
+            console.log("<<", v);
+        }
+        let buf = this.enc.encode(JSON.stringify(v));
+        let nwritten = 0;
+        while(nwritten < buf.length){
+            nwritten += await this.w.write(buf.subarray(nwritten));
+        }
+    }
+}
+class JSONDecoder {
+    constructor(r, debug3 = false){
+        this.r = r;
+        this.dec = new TextDecoder();
+        this.debug = debug3;
+    }
+    async decode(len) {
+        const buf = new Uint8Array(len);
+        const bufn = await this.r.read(buf);
+        if (bufn === null) {
+            return Promise.resolve(null);
+        }
+        let v = JSON.parse(this.dec.decode(buf));
+        if (this.debug) {
+            console.log(">>", v);
+        }
+        return Promise.resolve(v);
+    }
+}
+export { JSONCodec as JSONCodec };
+export { JSONEncoder as JSONEncoder };
+export { JSONDecoder as JSONDecoder };
 function copy(src, dst, off = 0) {
     off = Math.max(0, Math.min(off, dst.byteLength));
     const dstBytesAvailable = dst.byteLength - off;
@@ -9,15 +63,15 @@ function copy(src, dst, off = 0) {
 }
 const MIN_READ = 32 * 1024;
 const MAX_SIZE = 2 ** 32 - 2;
-class Buffer1 {
+class Buffer {
     constructor(ab){
         this._buf = ab === undefined ? new Uint8Array(0) : new Uint8Array(ab);
         this._off = 0;
     }
-    bytes(options = {
+    bytes(options1 = {
         copy: true
     }) {
-        if (options.copy === false) return this._buf.subarray(this._off);
+        if (options1.copy === false) return this._buf.subarray(this._off);
         return this._buf.slice(this._off);
     }
     empty() {
@@ -139,75 +193,25 @@ class Buffer1 {
         }
     }
 }
-export { Buffer1 as Buffer };
-class JSONCodec1 {
-    constructor(debug1 = false){
-        this.debug = debug1;
+export { Buffer as Buffer };
+class FrameCodec {
+    constructor(codec){
+        this.codec = codec;
     }
     encoder(w) {
-        return new JSONEncoder1(w, this.debug);
+        return new FrameEncoder(w, this.codec);
     }
     decoder(r) {
-        return new JSONDecoder1(r, this.debug);
+        return new FrameDecoder(r, this.codec.decoder(r));
     }
 }
-class JSONEncoder1 {
-    constructor(w1, debug2 = false){
-        this.w = w1;
-        this.enc = new TextEncoder();
-        this.debug = debug2;
+class FrameEncoder {
+    constructor(w, codec){
+        this.w = w;
+        this.codec = codec;
     }
     async encode(v) {
-        if (this.debug) {
-            console.log("<<", v);
-        }
-        let buf = this.enc.encode(JSON.stringify(v));
-        let nwritten = 0;
-        while(nwritten < buf.length){
-            nwritten += await this.w.write(buf.subarray(nwritten));
-        }
-    }
-}
-class JSONDecoder1 {
-    constructor(r1, debug3 = false){
-        this.r = r1;
-        this.dec = new TextDecoder();
-        this.debug = debug3;
-    }
-    async decode(len) {
-        const buf = new Uint8Array(len);
-        const bufn = await this.r.read(buf);
-        if (bufn === null) {
-            return Promise.resolve(null);
-        }
-        let v = JSON.parse(this.dec.decode(buf));
-        if (this.debug) {
-            console.log(">>", v);
-        }
-        return Promise.resolve(v);
-    }
-}
-export { JSONCodec1 as JSONCodec };
-export { JSONEncoder1 as JSONEncoder };
-export { JSONDecoder1 as JSONDecoder };
-class FrameCodec1 {
-    constructor(codec1){
-        this.codec = codec1;
-    }
-    encoder(w) {
-        return new FrameEncoder1(w, this.codec);
-    }
-    decoder(r) {
-        return new FrameDecoder1(r, this.codec.decoder(r));
-    }
-}
-class FrameEncoder1 {
-    constructor(w2, codec2){
-        this.w = w2;
-        this.codec = codec2;
-    }
-    async encode(v) {
-        const data = new Buffer1();
+        const data = new Buffer();
         const enc = this.codec.encoder(data);
         await enc.encode(v);
         const lenPrefix = new DataView(new ArrayBuffer(4));
@@ -221,10 +225,10 @@ class FrameEncoder1 {
         }
     }
 }
-class FrameDecoder1 {
-    constructor(r2, dec1){
-        this.r = r2;
-        this.dec = dec1;
+class FrameDecoder {
+    constructor(r, dec){
+        this.r = r;
+        this.dec = dec;
     }
     async decode(len) {
         const prefix = new Uint8Array(4);
@@ -237,16 +241,16 @@ class FrameDecoder1 {
         return await this.dec.decode(size);
     }
 }
-export { FrameCodec1 as FrameCodec };
-export { FrameEncoder1 as FrameEncoder };
-export { FrameDecoder1 as FrameDecoder };
-function HandlerFunc1(fn) {
+export { FrameCodec as FrameCodec };
+export { FrameEncoder as FrameEncoder };
+export { FrameDecoder as FrameDecoder };
+function HandlerFunc(fn) {
     return {
         respondRPC: fn
     };
 }
-function NotFoundHandler1() {
-    return HandlerFunc1((r, c)=>{
+function NotFoundHandler() {
+    return HandlerFunc((r, c)=>{
         r.return(new Error(`not found: ${c.selector}`));
     });
 }
@@ -260,10 +264,9 @@ function cleanSelector(s) {
     s = s.replace(".", "/");
     return s;
 }
-class RespondMux1 {
+class RespondMux {
     constructor(){
-        this.handlers = {
-        };
+        this.handlers = {};
     }
     async respondRPC(r, c) {
         const h = this.handler(c);
@@ -272,7 +275,7 @@ class RespondMux1 {
     handler(c) {
         const h = this.match(c.selector);
         if (!h) {
-            return NotFoundHandler1();
+            return NotFoundHandler();
         }
         return h;
     }
@@ -303,28 +306,28 @@ class RespondMux1 {
         this.handlers[selector] = handler;
     }
 }
-export { HandlerFunc1 as HandlerFunc };
-export { NotFoundHandler1 as NotFoundHandler };
-export { RespondMux1 as RespondMux };
-class Call1 {
-    constructor(selector1, decoder1){
-        this.selector = selector1;
-        this.decoder = decoder1;
+export { HandlerFunc as HandlerFunc };
+export { NotFoundHandler as NotFoundHandler };
+export { RespondMux as RespondMux };
+class Call {
+    constructor(selector, decoder){
+        this.selector = selector;
+        this.decoder = decoder;
     }
     receive() {
         return this.decoder.decode();
     }
 }
-class ResponseHeader1 {
+class ResponseHeader {
     constructor(){
         this.Error = undefined;
         this.Continue = false;
     }
 }
 class Response {
-    constructor(channel1, codec3){
-        this.channel = channel1;
-        this.codec = codec3;
+    constructor(channel, codec){
+        this.channel = channel;
+        this.codec = codec;
         this.error = undefined;
         this.continue = false;
     }
@@ -336,15 +339,15 @@ class Response {
     }
 }
 export { Response as Response };
-class Client1 {
-    constructor(session1, codec4){
-        this.session = session1;
-        this.codec = codec4;
+class Client {
+    constructor(session, codec1){
+        this.session = session;
+        this.codec = codec1;
     }
     async call(selector, args) {
         const ch = await this.session.open();
         try {
-            const framer = new FrameCodec1(this.codec);
+            const framer = new FrameCodec(this.codec);
             const enc = framer.encoder(ch);
             const dec = framer.decoder(ch);
             await enc.encode({
@@ -370,16 +373,16 @@ class Client1 {
         }
     }
 }
-async function Respond1(ch, codec, handler) {
-    const framer = new FrameCodec1(codec);
+async function Respond(ch, codec, handler) {
+    const framer = new FrameCodec(codec);
     const dec = framer.decoder(ch);
     const frame = await dec.decode();
-    const call = new Call1(frame.Selector, dec);
-    call.caller = new Client1(ch.session, codec);
-    const header = new ResponseHeader1();
-    const resp = new responder1(ch, framer, header);
+    const call = new Call(frame.Selector, dec);
+    call.caller = new Client(ch.session, codec);
+    const header = new ResponseHeader();
+    const resp = new responder(ch, framer, header);
     if (!handler) {
-        handler = new RespondMux1();
+        handler = new RespondMux();
     }
     await handler.respondRPC(resp, call);
     if (!resp.responded) {
@@ -387,7 +390,7 @@ async function Respond1(ch, codec, handler) {
     }
     return Promise.resolve();
 }
-function CallProxy1(caller) {
+function CallProxy(caller) {
     return new Proxy(caller, {
         get: (t, p, r)=>{
             const prop = p;
@@ -404,11 +407,11 @@ function CallProxy1(caller) {
         }
     });
 }
-class responder1 {
-    constructor(ch1, codec5, header1){
-        this.ch = ch1;
-        this.codec = codec5;
-        this.header = header1;
+class responder {
+    constructor(ch, codec, header){
+        this.ch = ch;
+        this.codec = codec;
+        this.header = header;
         this.responded = false;
     }
     send(v) {
@@ -436,17 +439,17 @@ class responder1 {
         return Promise.resolve();
     }
 }
-export { Call1 as Call };
-export { ResponseHeader1 as ResponseHeader };
-export { Client1 as Client };
-export { CallProxy1 as CallProxy };
-export { Respond1 as Respond };
-class Peer1 {
-    constructor(session2, codec6){
-        this.session = session2;
-        this.codec = codec6;
-        this.caller = new Client1(session2, codec6);
-        this.responder = new RespondMux1();
+export { Call as Call };
+export { ResponseHeader as ResponseHeader };
+export { Client as Client };
+export { CallProxy as CallProxy };
+export { Respond as Respond };
+class Peer {
+    constructor(session, codec){
+        this.session = session;
+        this.codec = codec;
+        this.caller = new Client(session, codec);
+        this.responder = new RespondMux();
     }
     async respond() {
         while(true){
@@ -454,7 +457,7 @@ class Peer1 {
             if (ch === null) {
                 break;
             }
-            Respond1(ch, this.codec, this.responder);
+            Respond(ch, this.codec, this.responder);
         }
     }
     async call(selector, params) {
@@ -467,7 +470,7 @@ class Peer1 {
         this.responder.respondRPC(r, c);
     }
 }
-export { Peer1 as Peer };
+export { Peer as Peer };
 function concat(list, totalLength) {
     const buf = new Uint8Array(totalLength);
     let offset = 0;
@@ -604,20 +607,20 @@ var payloadSizes = new Map([
         4
     ], 
 ]);
-var debug4 = {
+var debug = {
     messages: false,
     bytes: false
 };
 class Encoder {
-    constructor(w3){
-        this.w = w3;
+    constructor(w){
+        this.w = w;
     }
     async encode(m) {
-        if (debug4.messages) {
+        if (debug.messages) {
             console.log("<<ENC", m);
         }
         const buf = Marshal(m);
-        if (debug4.bytes) {
+        if (debug.bytes) {
             console.log("<<ENC", buf);
         }
         let nwritten = 0;
@@ -628,19 +631,19 @@ class Encoder {
     }
 }
 class Decoder {
-    constructor(r3){
-        this.r = r3;
+    constructor(r){
+        this.r = r;
     }
     async decode() {
         const packet = await readPacket(this.r);
         if (packet === null) {
             return Promise.resolve(null);
         }
-        if (debug4.bytes) {
+        if (debug.bytes) {
             console.log(">>DEC", packet);
         }
         const msg = Unmarshal(packet);
-        if (debug4.messages) {
+        if (debug.messages) {
             console.log(">>DEC", msg);
         }
         return msg;
@@ -795,11 +798,11 @@ function Unmarshal(packet) {
             throw `unmarshal of unknown type: ${packet[0]}`;
     }
 }
-const minPacketLength1 = 9;
-const channelMaxPacket1 = 1 << 15;
-const maxPacketLength1 = Number.MAX_VALUE;
-const channelWindowSize1 = 64 * channelMaxPacket1;
-class Channel1 {
+const minPacketLength = 9;
+const channelMaxPacket = 1 << 24;
+const maxPacketLength = Number.MAX_VALUE;
+const channelWindowSize = 64 * channelMaxPacket;
+class Channel {
     constructor(sess){
         this.localId = 0;
         this.remoteId = 0;
@@ -902,8 +905,7 @@ class Channel1 {
                 channelID: this.remoteId
             });
             this.sentClose = true;
-            while(await this.ready.shift() !== null){
-            }
+            while(await this.ready.shift() !== null){}
             return;
         }
         this.shutdown();
@@ -948,7 +950,7 @@ class Channel1 {
             return;
         }
         if (msg.ID === 101) {
-            if (msg.maxPacketSize < 9 || msg.maxPacketSize > maxPacketLength1) {
+            if (msg.maxPacketSize < 9 || msg.maxPacketSize > maxPacketLength) {
                 throw "invalid max packet size";
             }
             this.remoteId = msg.senderID;
@@ -972,19 +974,19 @@ class Channel1 {
         this.readBuf.write(msg.data);
     }
 }
-export { Channel1 as Channel };
-class Session1 {
-    constructor(conn1){
-        this.conn = conn1;
-        this.enc = new Encoder(conn1);
-        this.dec = new Decoder(conn1);
+export { Channel as Channel };
+class Session {
+    constructor(conn){
+        this.conn = conn;
+        this.enc = new Encoder(conn);
+        this.dec = new Decoder(conn);
         this.channels = [];
         this.incoming = new queue();
         this.done = this.loop();
     }
     async open() {
         const ch = this.newChannel();
-        ch.maxIncomingPayload = channelMaxPacket1;
+        ch.maxIncomingPayload = channelMaxPacket;
         await this.enc.encode({
             ID: 100,
             windowSize: ch.myWindow,
@@ -1033,7 +1035,7 @@ class Session1 {
         }
     }
     async handleOpen(msg) {
-        if (msg.maxPacketSize < 9 || msg.maxPacketSize > maxPacketLength1) {
+        if (msg.maxPacketSize < 9 || msg.maxPacketSize > maxPacketLength) {
             await this.enc.encode({
                 ID: 102,
                 channelID: msg.senderID
@@ -1044,7 +1046,7 @@ class Session1 {
         c.remoteId = msg.senderID;
         c.maxRemotePayload = msg.maxPacketSize;
         c.remoteWin = msg.windowSize;
-        c.maxIncomingPayload = channelMaxPacket1;
+        c.maxIncomingPayload = channelMaxPacket;
         this.incoming.push(c);
         await this.enc.encode({
             ID: 101,
@@ -1055,9 +1057,9 @@ class Session1 {
         });
     }
     newChannel() {
-        const ch = new Channel1(this);
+        const ch = new Channel(this);
         ch.remoteWin = 0;
-        ch.myWindow = channelWindowSize1;
+        ch.myWindow = channelWindowSize;
         ch.localId = this.addCh(ch);
         return ch;
     }
@@ -1082,12 +1084,12 @@ class Session1 {
         delete this.channels[id];
     }
 }
-export { minPacketLength1 as minPacketLength };
-export { maxPacketLength1 as maxPacketLength };
-export { Session1 as Session };
-export { channelMaxPacket1 as channelMaxPacket };
-export { channelWindowSize1 as channelWindowSize };
-function connect2(addr, onclose) {
+export { minPacketLength as minPacketLength };
+export { maxPacketLength as maxPacketLength };
+export { Session as Session };
+export { channelMaxPacket as channelMaxPacket };
+export { channelWindowSize as channelWindowSize };
+function connect(addr, onclose) {
     return new Promise((resolve)=>{
         const socket = new WebSocket(addr);
         socket.onopen = ()=>resolve(new Conn(socket))
@@ -1096,11 +1098,11 @@ function connect2(addr, onclose) {
     });
 }
 class Conn {
-    constructor(ws1){
+    constructor(ws){
         this.isClosed = false;
         this.waiters = [];
         this.chunks = [];
-        this.ws = ws1;
+        this.ws = ws;
         this.ws.binaryType = "arraybuffer";
         this.ws.onmessage = (event)=>{
             const chunk = new Uint8Array(event.data);
@@ -1160,14 +1162,11 @@ class Conn {
         this.ws.close();
     }
 }
-const mod = function() {
-    return {
-        connect: connect2,
-        Conn: Conn
-    };
-}();
-var frames = {
+const mod = {
+    connect: connect,
+    Conn: Conn
 };
+var frames = {};
 function frameElementID(w) {
     return w.frameElement ? w.frameElement.id : "";
 }
@@ -1195,13 +1194,13 @@ window.addEventListener("message", (event)=>{
     }
 });
 class Conn1 {
-    constructor(frame1){
+    constructor(frame){
         this.isClosed = false;
         this.waiters = [];
         this.chunks = [];
-        if (frame1 && frame1.contentWindow) {
-            this.frame = frame1.contentWindow;
-            frames[frame1.id] = this;
+        if (frame && frame.contentWindow) {
+            this.frame = frame.contentWindow;
+            frames[frame.id] = this;
         } else {
             this.frame = window.parent;
             frames[frameElementID(window.parent)] = this;
@@ -1250,32 +1249,32 @@ class Conn1 {
         );
     }
 }
-var options1 = {
+var options = {
     transport: mod
 };
 async function connect1(addr, codec) {
-    const conn = await options1.transport.connect(addr);
-    return open1(conn, codec);
+    const conn = await options.transport.connect(addr);
+    return open(conn, codec);
 }
-function open1(conn, codec, handlers) {
+function open(conn, codec, handlers) {
     if (conn === window.parent) {
         conn = new Conn1();
     }
     if (typeof conn === "string") {
         conn = new Conn1(document.querySelector(`iframe#${conn}`));
     }
-    const sess = new Session1(conn);
-    const p = new Peer1(sess, codec);
+    const sess = new Session(conn);
+    const p = new Peer(sess, codec);
     if (handlers) {
         for(const name in handlers){
-            p.handle(name, HandlerFunc1(handlers[name]));
+            p.handle(name, HandlerFunc(handlers[name]));
         }
         p.respond();
     }
     return p;
 }
-export { options1 as options,  };
+export { options as options,  };
 export { connect1 as connect };
-export { open1 as open };
+export { open as open };
 export { Conn1 as IFrameConn };
 
