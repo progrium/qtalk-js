@@ -3,6 +3,8 @@ import * as io from "../io.ts";
 // @ts-ignore
 export * from "./json.ts"
 // @ts-ignore
+export * from "./cbor.ts"
+// @ts-ignore
 export * from "./frame.ts"
 
 export interface Encoder {
