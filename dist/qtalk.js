@@ -2508,7 +2508,7 @@ function VirtualCaller(caller) {
       }
     });
   }
-  return pathBuilder("", caller.call);
+  return pathBuilder("", caller.call.bind(caller));
 }
 
 // rpc/handler.ts
@@ -2680,6 +2680,9 @@ var Peer = class {
   }
   respondRPC(r, c) {
     this.responder.respondRPC(r, c);
+  }
+  virtualize() {
+    return VirtualCaller(this.caller);
   }
 };
 

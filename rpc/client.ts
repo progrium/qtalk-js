@@ -64,5 +64,5 @@ export function VirtualCaller(caller: rpc.Caller): any {
       }
     })
   }
-  return pathBuilder("", caller.call);
+  return pathBuilder("", caller.call.bind(caller));
 }
